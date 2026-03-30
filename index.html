@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cypher Downloader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ── Background FX ─────────────────────────────────────────────────────── -->
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow glow-1" aria-hidden="true"></div>
+<div class="bg-glow glow-2" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+
+<!-- ── App Shell ─────────────────────────────────────────────────────────── -->
+<div class="app-shell">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-mark">
+        <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
+          <polygon points="18,2 34,28 2,28" stroke="var(--accent-1)" stroke-width="2.5" fill="none" opacity="0.8"/>
+          <polygon points="18,8 30,28 6,28" stroke="var(--accent-2)" stroke-width="1" fill="none" opacity="0.4"/>
+          <circle cx="18" cy="20" r="4" fill="var(--accent-1)" opacity="0.9"/>
+          <line x1="18" y1="4" x2="18" y2="14" stroke="var(--accent-2)" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-cypher">CYPHER</span>
+        <span class="logo-dl">DOWNLOADER</span>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">Connecting...</span>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <button class="icon-btn" id="darkToggle" title="Toggle light/dark">☀</button>
+      <!-- Theme Picker -->
+      <div class="theme-picker">
+        <button class="icon-btn theme-trigger" title="Change theme">◈</button>
+        <div class="theme-dropdown">
+          <div class="theme-group-label">Kuromi</div>
+          <button class="theme-btn" data-theme="kuromi-dark">
+            <span class="theme-swatch" style="background:linear-gradient(135deg,#c77dff,#ff80ab)"></span> Dark
+          </button>
+          <button class="theme-btn" data-theme="kuromi-light">
+            <span class="theme-swatch" style="background:linear-gradient(135deg,#9c27b0,#f06292)"></span> Light
+          </button>
+          <div class="theme-group-label">Cyberpunk 2077</div>
+          <button class="theme-btn" data-theme="cyberpunk-dark">
+            <span class="theme-swatch" style="background:linear-gradient(135deg,#00ffff,#ff006e)"></span> Dark
+          </button>
+          <button class="theme-btn" data-theme="cyberpunk-light">
+            <span class="theme-swatch" style="background:linear-gradient(135deg,#006064,#c2185b)"></span> Light
+          </button>
+          <div class="theme-group-label">PlayStation 4</div>
+          <button class="theme-btn" data-theme="ps4-dark">
+            <span class="theme-swatch" style="background:linear-gradient(135deg,#00439c,#0070d1)"></span> Dark
+          </button>
+          <button class="theme-btn" data-theme="ps4-light">
+            <span class="theme-swatch" style="background:linear-gradient(135deg,#0070d1,#90caf9)"></span> Light
+          </button>
+          <div class="theme-group-label">Elden Ring</div>
+          <button class="theme-btn" data-theme="eldenring-dark">
+            <span class="theme-swatch" style="background:linear-gradient(135deg,#c9a84c,#1a1200)"></span> Dark
+          </button>
+          <button class="theme-btn" data-theme="eldenring-light">
+            <span class="theme-swatch" style="background:linear-gradient(135deg,#c9a84c,#fdf6e3)"></span> Light
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main Content ────────────────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- URL Input Section -->
+    <section class="url-section">
+      <div class="url-box">
+        <div class="url-input-wrap">
+          <span class="url-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+            </svg>
+          </span>
+          <input
+            type="url"
+            id="urlInput"
+            class="url-input"
+            placeholder="Paste URL — YouTube, Instagram, TikTok, Facebook, direct .mp4..."
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button class="url-clear" onclick="document.getElementById('urlInput').value='';document.getElementById('mediaInfoCard').innerHTML=''" title="Clear">✕</button>
+        </div>
+
+        <!-- Media Info Preview -->
+        <div id="infoLoader" class="info-loader" style="display:none">
+          <div class="loader-dots"><span></span><span></span><span></span></div>
+          <span>Fetching media info...</span>
+        </div>
+        <div id="mediaInfoCard" class="media-info-card"></div>
+      </div>
+    </section>
+
+    <!-- Options + Download -->
+    <section class="options-section">
+      <!-- Tabs -->
+      <div class="tabs-row">
+        <button class="tab-btn active" data-tab="video">
+          <span>▶</span> Video
+        </button>
+        <button class="tab-btn" data-tab="audio">
+          <span>♪</span> Audio
+        </button>
+        <button class="tab-btn" data-tab="playlist">
+          <span>☰</span> Playlist
+        </button>
+      </div>
+
+      <!-- Video Panel -->
+      <div class="tab-panel active" data-panel="video">
+        <div class="options-grid">
+          <div class="option-group">
+            <label class="option-label">Quality</label>
+            <div class="pill-row">
+              <button class="option-pill" data-group="quality" data-value="360p">360p</button>
+              <button class="option-pill" data-group="quality" data-value="480p">480p</button>
+              <button class="option-pill active" data-group="quality" data-value="720p">720p</button>
+              <button class="option-pill" data-group="quality" data-value="1080p">1080p</button>
+              <button class="option-pill" data-group="quality" data-value="2K">2K</button>
+              <button class="option-pill" data-group="quality" data-value="4K">4K</button>
+            </div>
+          </div>
+          <div class="option-group">
+            <label class="option-label">Format</label>
+            <div class="pill-row">
+              <button class="option-pill active" data-group="format" data-value="mp4">MP4</button>
+              <button class="option-pill" data-group="format" data-value="mkv">MKV</button>
+              <button class="option-pill" data-group="format" data-value="webm">WEBM</button>
+            </div>
+          </div>
+          <div class="option-group">
+            <label class="option-label">FPS</label>
+            <div class="pill-row">
+              <button class="option-pill active" data-group="fps" data-value="30fps">30 fps</button>
+              <button class="option-pill" data-group="fps" data-value="60fps">60 fps</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audio Panel -->
+      <div class="tab-panel" data-panel="audio">
+        <div class="options-grid">
+          <div class="option-group">
+            <label class="option-label">Format</label>
+            <div class="pill-row">
+              <button class="option-pill active" data-group="audioformat" data-value="mp3">MP3</button>
+              <button class="option-pill" data-group="audioformat" data-value="wav">WAV</button>
+              <button class="option-pill" data-group="audioformat" data-value="flac">FLAC</button>
+            </div>
+          </div>
+          <div class="option-group">
+            <label class="option-label">Bitrate</label>
+            <div class="pill-row">
+              <button class="option-pill" data-group="bitrate" data-value="120kbps">120 kbps</button>
+              <button class="option-pill active" data-group="bitrate" data-value="320kbps">320 kbps</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playlist Panel -->
+      <div class="tab-panel" data-panel="playlist">
+        <div class="options-grid">
+          <div class="option-group">
+            <label class="option-label">Video Quality</label>
+            <div class="pill-row">
+              <button class="option-pill" data-group="quality" data-value="360p">360p</button>
+              <button class="option-pill" data-group="quality" data-value="480p">480p</button>
+              <button class="option-pill active" data-group="quality" data-value="720p">720p</button>
+              <button class="option-pill" data-group="quality" data-value="1080p">1080p</button>
+            </div>
+          </div>
+          <div class="option-group">
+            <label class="option-label">Format</label>
+            <div class="pill-row">
+              <button class="option-pill active" data-group="format" data-value="mp4">MP4</button>
+              <button class="option-pill" data-group="format" data-value="mkv">MKV</button>
+            </div>
+          </div>
+          <div class="playlist-note">
+            <span class="note-icon">ℹ</span>
+            Full playlists will be saved to <code>~/Downloads/cypher-downloader/playlists/</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Download Button -->
+      <div class="download-row">
+        <button class="download-btn" id="downloadBtn">
+          <span class="btn-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </span>
+          <span class="btn-text">Download</span>
+          <div class="btn-shimmer"></div>
+        </button>
+      </div>
+    </section>
+
+    <!-- Downloads Queue -->
+    <section class="queue-section">
+      <div class="queue-header">
+        <h2 class="queue-title">
+          <span class="queue-title-icon">⬇</span>
+          Downloads
+        </h2>
+        <button class="btn-cancel-all" id="cancelAllBtn">Cancel All</button>
+      </div>
+      <div class="download-list" id="downloadList">
+        <div class="empty-state">
+          <div class="empty-icon">⬇</div>
+          <div class="empty-text">No downloads yet</div>
+          <div class="empty-sub">Paste a URL above and hit Download</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────────── -->
+  <footer class="app-footer">
+    <span>Cypher Downloader · Powered by yt-dlp + FFmpeg</span>
+    <span class="footer-ports">UI :4001 · Engine :4002</span>
+  </footer>
+
+</div>
+
+<!-- ── Error Toast ──────────────────────────────────────────────────────── -->
+<div class="error-toast" id="errorToast"></div>
+
+<!-- ── Scripts ─────────────────────────────────────────────────────────── -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="themes.js"></script>
+<script src="ui.js"></script>
+
+</body>
+</html>
