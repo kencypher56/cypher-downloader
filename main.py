@@ -10,6 +10,7 @@ import os
 import json
 import threading
 import signal
+import uuid
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -106,6 +107,75 @@ def start_download():
         active_downloads[dl_id]['thread'] = None  # not serializable, just flag
 
     return jsonify({"id": dl_id, "status": "started"})
+
+
+@app.route('/download/bulk', methods=['POST'])
+def start_bulk_download():
+    """Start bulk download from text content."""
+    data = request.get_json()
+    text = data.get('text', '')
+    media_type = data.get('type', 'video')
+    quality = data.get('quality', '720p')
+    fmt = data.get('format', 'mp4')
+    fps = data.get('fps', '30fps')
+
+    urls = [line.strip() for line in text.split('\n') if line.strip().startswith('http')]
+    
+    if not urls:
+        return jsonify({"error": "No valid URLs found in text file"}), 400
+
+    results = []
+    download_dir = osdetection.get_download_dir()
+    os.makedirs(download_dir, exist_ok=True)
+
+    for url in urls:
+        dl_id = str(uuid.uuid4())[:8]
+        
+        def run_download(current_url=url, current_id=dl_id):
+            with download_lock:
+                active_downloads[current_id] = {
+                    "id": current_id, "url": current_url, "status": "starting",
+                    "progress": 0, "speed": "0 KB/s", "eta": "--",
+                    "downloaded": 0, "total": 0, "file": None, "error": None
+                }
+
+            try:
+                if media_type == 'playlist':
+                    processing.download_playlist(
+                        url=current_url, fmt=fmt, quality=quality, fps=fps,
+                        download_dir=download_dir, dl_id=current_id,
+                        progress_registry=active_downloads, lock=download_lock
+                    )
+                elif media_type == 'audio':
+                    processing.download_audio(
+                        url=current_url, fmt=fmt, bitrate=quality,
+                        download_dir=download_dir, dl_id=current_id,
+                        progress_registry=active_downloads, lock=download_lock
+                    )
+                else:
+                    processing.download_video(
+                        url=current_url, fmt=fmt, quality=quality, fps=fps,
+                        download_dir=download_dir, dl_id=current_id,
+                        progress_registry=active_downloads, lock=download_lock
+                    )
+            except Exception as e:
+                with download_lock:
+                    if current_id in active_downloads:
+                        active_downloads[current_id]['status'] = 'error'
+                        active_downloads[current_id]['error'] = str(e)
+
+        t = threading.Thread(target=run_download, daemon=True)
+        t.start()
+
+        with download_lock:
+            active_downloads[dl_id] = active_downloads.get(dl_id, {
+                "id": dl_id, "status": "queued", "progress": 0, "url": url
+            })
+            active_downloads[dl_id]['thread'] = None
+            
+        results.append({"id": dl_id, "url": url})
+
+    return jsonify({"downloads": results})
 
 
 @app.route('/progress/<dl_id>', methods=['GET'])

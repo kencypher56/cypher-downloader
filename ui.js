@@ -112,10 +112,14 @@ async function fetchInfo(url) {
 
 // ─── Start Download ────────────────────────────────────────────────────────────
 async function startDownload() {
+  const type    = State.activeTab;
+  if (type === 'bulk') {
+    return startBulkDownload();
+  }
+
   const url = document.getElementById('urlInput')?.value?.trim();
   if (!url) return UI.showError('Please enter a URL');
 
-  const type    = State.activeTab;
   const quality = getSelectedQuality(type);
   const format  = getSelectedFormat(type);
   const fps     = getSelectedFps();
@@ -141,6 +145,69 @@ async function startDownload() {
     UI.showError('Failed to start: ' + e.message);
   } finally {
     UI.setDownloadBtnLoading(false);
+  }
+}
+
+async function startBulkDownload() {
+  const fileInput = document.getElementById('bulkUploadInput');
+  const file = fileInput.files[0];
+  if (!file) return UI.showError('Please select a text file first');
+
+  const bulkType = document.querySelector('[data-group="bulktype"].active')?.dataset?.value || 'video';
+  const quality = bulkType === 'audio' 
+    ? (document.querySelector('[data-group="bulkbitrate"].active')?.dataset?.value || '320kbps')
+    : (document.querySelector('[data-group="bulkquality"].active')?.dataset?.value || '720p');
+  const format = bulkType === 'audio'
+    ? (document.querySelector('[data-group="bulkaudioformat"].active')?.dataset?.value || 'mp3')
+    : (document.querySelector('[data-group="bulkformat"].active')?.dataset?.value || 'mp4');
+  const fps = document.querySelector('[data-group="fps"].active')?.dataset?.value || '30fps';
+
+  const text = await file.text();
+
+  UI.setDownloadBtnLoading(true);
+  try {
+    const { ok, data } = await apiPost('/api/download/bulk', { text, type: bulkType, quality, format, fps });
+    
+    if (ok && data.downloads) {
+      for (const d of data.downloads) {
+        State.downloads[d.id] = {
+          id: d.id, url: d.url, type: bulkType, quality, format, fps,
+          status: 'starting', progress: 0,
+          title: d.url,
+          thumbnail: '',
+        };
+        if (State.socket) State.socket.emit('subscribe', d.id);
+        UI.addDownloadCard(d.id, State.downloads[d.id]);
+      }
+      fileInput.value = '';
+      const infoEl = document.getElementById('bulkUploadInfo');
+      if (infoEl) infoEl.innerHTML = '<span>Upload a .txt file with one link per line</span>';
+      UI.showError(`Started ${data.downloads.length} downloads from file`);
+    } else {
+      UI.showError(data.error || 'Failed to start bulk download');
+    }
+  } catch (e) {
+    UI.showError('Error in bulk download: ' + e.message);
+  } finally {
+    UI.setDownloadBtnLoading(false);
+  }
+}
+
+function toggleBulkType(type) {
+  const vidFmt = document.getElementById('bulkVideoFormatGroup');
+  const vidQual = document.getElementById('bulkVideoQualityGroup');
+  const audFmt = document.getElementById('bulkAudioFormatGroup');
+  const audBit = document.getElementById('bulkAudioBitrateGroup');
+  if (type === 'video') {
+    if (vidFmt) vidFmt.style.display = '';
+    if (vidQual) vidQual.style.display = '';
+    if (audFmt) audFmt.style.display = 'none';
+    if (audBit) audBit.style.display = 'none';
+  } else {
+    if (vidFmt) vidFmt.style.display = 'none';
+    if (vidQual) vidQual.style.display = 'none';
+    if (audFmt) audFmt.style.display = '';
+    if (audBit) audBit.style.display = '';
   }
 }
 
@@ -487,6 +554,22 @@ document.addEventListener('DOMContentLoaded', () => {
     urlInput.addEventListener('paste', onUrlPaste);
   }
 
+  // Bulk Upload setup
+  const bulkBtn = document.getElementById('bulkUploadBtn');
+  const bulkInput = document.getElementById('bulkUploadInput');
+  const bulkInfo = document.getElementById('bulkUploadInfo');
+  
+  if (bulkBtn && bulkInput) {
+    bulkBtn.addEventListener('click', () => bulkInput.click());
+    bulkInput.addEventListener('change', () => {
+      if (bulkInput.files && bulkInput.files.length > 0) {
+        bulkInfo.innerHTML = `<span>Selected: ${escHtml(bulkInput.files[0].name)}</span>`;
+      } else {
+        bulkInfo.innerHTML = `<span>Upload a .txt file with one link per line</span>`;
+      }
+    });
+  }
+
   // Download button
   const dlBtn = document.getElementById('downloadBtn');
   if (dlBtn) dlBtn.addEventListener('click', startDownload);
@@ -517,3 +600,4 @@ window.clearDownload  = clearDownload;
 window.retryDownload  = retryDownload;
 window.switchTab      = switchTab;
 window.selectOption   = selectOption;
+window.toggleBulkType = toggleBulkType;

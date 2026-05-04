@@ -128,6 +128,9 @@
         <button class="tab-btn" data-tab="playlist">
           <span>☰</span> Playlist
         </button>
+        <button class="tab-btn" data-tab="bulk">
+          <span>📂</span> Bulk Upload
+        </button>
       </div>
 
       <!-- Video Panel -->
@@ -205,6 +208,60 @@
           <div class="playlist-note">
             <span class="note-icon">ℹ</span>
             Full playlists will be saved to <code>~/Downloads/cypher-downloader/playlists/</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bulk Upload Panel -->
+      <div class="tab-panel" data-panel="bulk">
+        <div class="options-grid">
+          <div class="option-group">
+            <label class="option-label">Media Type</label>
+            <div class="pill-row">
+              <button class="option-pill active" data-group="bulktype" data-value="video" onclick="toggleBulkType('video')">Video</button>
+              <button class="option-pill" data-group="bulktype" data-value="audio" onclick="toggleBulkType('audio')">Audio (MP3)</button>
+            </div>
+          </div>
+          <div class="option-group" id="bulkVideoFormatGroup">
+            <label class="option-label">Format</label>
+            <div class="pill-row">
+              <button class="option-pill active" data-group="bulkformat" data-value="mp4">MP4</button>
+              <button class="option-pill" data-group="bulkformat" data-value="mkv">MKV</button>
+              <button class="option-pill" data-group="bulkformat" data-value="webm">WEBM</button>
+            </div>
+          </div>
+          <div class="option-group" id="bulkVideoQualityGroup">
+            <label class="option-label">Quality</label>
+            <div class="pill-row">
+              <button class="option-pill" data-group="bulkquality" data-value="360p">360p</button>
+              <button class="option-pill" data-group="bulkquality" data-value="480p">480p</button>
+              <button class="option-pill active" data-group="bulkquality" data-value="720p">720p</button>
+              <button class="option-pill" data-group="bulkquality" data-value="1080p">1080p</button>
+            </div>
+          </div>
+          <div class="option-group" id="bulkAudioFormatGroup" style="display:none">
+            <label class="option-label">Format</label>
+            <div class="pill-row">
+              <button class="option-pill active" data-group="bulkaudioformat" data-value="mp3">MP3</button>
+              <button class="option-pill" data-group="bulkaudioformat" data-value="wav">WAV</button>
+              <button class="option-pill" data-group="bulkaudioformat" data-value="flac">FLAC</button>
+            </div>
+          </div>
+          <div class="option-group" id="bulkAudioBitrateGroup" style="display:none">
+            <label class="option-label">Bitrate</label>
+            <div class="pill-row">
+              <button class="option-pill" data-group="bulkbitrate" data-value="120kbps">120 kbps</button>
+              <button class="option-pill active" data-group="bulkbitrate" data-value="320kbps">320 kbps</button>
+            </div>
+          </div>
+          <div class="bulk-upload-box">
+            <input type="file" id="bulkUploadInput" accept=".txt" style="display:none">
+            <button class="bulk-upload-btn" id="bulkUploadBtn" type="button">
+              <span>📁</span> Choose Text File
+            </button>
+            <div class="bulk-upload-info" id="bulkUploadInfo">
+              <span>Upload a .txt file with one link per line</span>
+            </div>
           </div>
         </div>
       </div>

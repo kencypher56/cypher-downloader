@@ -89,6 +89,29 @@ app.post('/api/download', async (req, res) => {
   res.json({ id, status: 'started' });
 });
 
+// ─── Bulk Download ────────────────────────────────────────────────────────────
+app.post('/api/download/bulk', async (req, res) => {
+  const { text, type, quality, format, fps } = req.body;
+  if (!text) return res.status(400).json({ error: 'text required' });
+
+  const payload = { text, type: type || 'video', quality: quality || '720p',
+                    format: format || 'mp4', fps: fps || '30fps' };
+
+  const result = await backendConnection.proxyPost(PORT_PYTHON, '/download/bulk', payload);
+  if (!result.ok) {
+    return res.status(500).json(result.data);
+  }
+
+  // Register all generated ids locally in Node
+  if (result.data && result.data.downloads) {
+    for (const d of result.data.downloads) {
+      downloading.register(d.id, { url: d.url, type, quality, format, fps, started: Date.now() });
+    }
+  }
+
+  res.json(result.data);
+});
+
 // ─── Progress ──────────────────────────────────────────────────────────────────
 app.get('/api/progress/:id', async (req, res) => {
   const { id } = req.params;
