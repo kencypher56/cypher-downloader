@@ -31,6 +31,7 @@
 | 🌍 **Multi‑platform** | YouTube, Instagram, Facebook, TikTok (no watermark), direct video links |
 | 🎬 **Quality & Format** | Resolutions up to 4K, 30/60 fps, audio extraction (MP3, WAV, FLAC) with bitrate options |
 | 📜 **Playlist support** | Download full playlists in one click with selected format |
+| 📦 **Bulk Downloading** | Upload a `.txt` file with links to download multiple videos/audios simultaneously |
 | 📊 **Real‑time progress** | Speed, percentage, remaining size, smooth progress bar |
 | ⚡ **Resumable & Parallel** | Multi‑download manager, resume broken downloads, efficient parallel system |
 | 🎨 **4 Animated Themes** | Kuromi, Cyberpunk 2077, PlayStation 4, Elden Ring — light/dark variants |
@@ -149,6 +150,20 @@ Cypher Downloader uses a **hybrid model**:
 
 - **Resolutions**: 360p, 480p, 720p, 1080p, 2K, 4K (conditional)
 - **Audio bitrates**: 120kbps, 320kbps
+
+---
+
+## 📦 Bulk Downloading
+
+Cypher Downloader supports downloading multiple media files simultaneously by reading URLs directly from a text file. This is handled entirely by the Python backend for maximum efficiency.
+
+### How to use:
+1. Create a plain `.txt` file containing your links, with **one URL per line**. (e.g., YouTube videos, Shorts, Instagram links).
+2. Open the **Bulk Upload** tab in the Cypher Downloader UI.
+3. Select your desired **Media Type** (Video or Audio).
+4. Choose your preferred quality and format settings. *Note: The settings you select here will be applied to ALL links in your text file.*
+5. Click **Choose Text File** and select your `.txt` file.
+6. Click **Download**. The engine will automatically parse the file and start a parallel download process for each valid link.
 
 ---
 
