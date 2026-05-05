@@ -119,7 +119,12 @@ def start_bulk_download():
     fmt = data.get('format', 'mp4')
     fps = data.get('fps', '30fps')
 
-    urls = [line.strip() for line in text.split('\n') if line.strip().startswith('http')]
+    # Parse and validate URLs from text
+    urls = []
+    for line in text.split('\n'):
+        line = line.strip()
+        if line and (line.startswith('http://') or line.startswith('https://')):
+            urls.append(line)
     
     if not urls:
         return jsonify({"error": "No valid URLs found in text file"}), 400

@@ -160,29 +160,33 @@ async function startBulkDownload() {
   const format = bulkType === 'audio'
     ? (document.querySelector('[data-group="bulkaudioformat"].active')?.dataset?.value || 'mp3')
     : (document.querySelector('[data-group="bulkformat"].active')?.dataset?.value || 'mp4');
-  const fps = document.querySelector('[data-group="fps"].active')?.dataset?.value || '30fps';
+  const fps = bulkType === 'video' ? (document.querySelector('[data-group="fps"].active')?.dataset?.value || '30fps') : null;
 
   const text = await file.text();
 
   UI.setDownloadBtnLoading(true);
   try {
-    const { ok, data } = await apiPost('/api/download/bulk', { text, type: bulkType, quality, format, fps });
+    const payload = { text, type: bulkType, quality, format };
+    if (fps) payload.fps = fps;  // Only send fps for video
+    const { ok, data } = await apiPost('/api/download/bulk', payload);
     
     if (ok && data.downloads) {
       for (const d of data.downloads) {
-        State.downloads[d.id] = {
-          id: d.id, url: d.url, type: bulkType, quality, format, fps,
+        const downloadInfo = {
+          id: d.id, url: d.url, type: bulkType, quality, format,
           status: 'starting', progress: 0,
           title: d.url,
           thumbnail: '',
         };
+        if (fps) downloadInfo.fps = fps;  // Include fps only for video
+        State.downloads[d.id] = downloadInfo;
         if (State.socket) State.socket.emit('subscribe', d.id);
         UI.addDownloadCard(d.id, State.downloads[d.id]);
       }
       fileInput.value = '';
       const infoEl = document.getElementById('bulkUploadInfo');
-      if (infoEl) infoEl.innerHTML = '<span>Upload a .txt file with one link per line</span>';
-      UI.showError(`Started ${data.downloads.length} downloads from file`);
+      if (infoEl) infoEl.innerHTML = 'Upload a .txt file with one link per line';
+      UI.showSuccess(`✓ Started ${data.downloads.length} download${data.downloads.length > 1 ? 's' : ''}`);
     } else {
       UI.showError(data.error || 'Failed to start bulk download');
     }
@@ -339,6 +343,14 @@ const UI = {
     setTimeout(() => el.classList.remove('visible'), 5000);
   },
 
+  showSuccess(msg) {
+    const el = document.getElementById('errorToast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('visible', 'success');
+    setTimeout(() => el.classList.remove('visible', 'success'), 4000);
+  },
+
   setDownloadBtnLoading(loading) {
     const btn = document.getElementById('downloadBtn');
     if (!btn) return;
@@ -473,6 +485,15 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-panel').forEach(panel => {
     panel.classList.toggle('active', panel.dataset.panel === tab);
   });
+
+  // Update button text based on tab
+  const dlBtn = document.getElementById('downloadBtn');
+  if (dlBtn) {
+    const btnText = dlBtn.querySelector('.btn-text');
+    if (btnText) {
+      btnText.textContent = tab === 'bulk' ? 'Start Bulk' : 'Download';
+    }
+  }
 }
 
 // ─── Option pill selection ─────────────────────────────────────────────────────

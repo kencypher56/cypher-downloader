@@ -256,11 +256,11 @@
           </div>
           <div class="bulk-upload-box">
             <input type="file" id="bulkUploadInput" accept=".txt" style="display:none">
-            <button class="bulk-upload-btn" id="bulkUploadBtn" type="button">
-              <span>📁</span> Choose Text File
+            <button class="bulk-upload-btn" id="bulkUploadBtn" type="button" onclick="document.getElementById('bulkUploadInput').click()">
+              <span>📂</span> Choose Text File
             </button>
             <div class="bulk-upload-info" id="bulkUploadInfo">
-              <span>Upload a .txt file with one link per line</span>
+              Upload a .txt file with one link per line
             </div>
           </div>
         </div>

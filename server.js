@@ -94,8 +94,18 @@ app.post('/api/download/bulk', async (req, res) => {
   const { text, type, quality, format, fps } = req.body;
   if (!text) return res.status(400).json({ error: 'text required' });
 
-  const payload = { text, type: type || 'video', quality: quality || '720p',
-                    format: format || 'mp4', fps: fps || '30fps' };
+  const mediaType = type || 'video';
+  const actualQuality = quality || (mediaType === 'audio' ? '320kbps' : '720p');
+  const actualFormat = format || (mediaType === 'audio' ? 'mp3' : 'mp4');
+  const actualFps = fps || '30fps';
+
+  const payload = { 
+    text, 
+    type: mediaType, 
+    quality: actualQuality,
+    format: actualFormat,
+    fps: actualFps 
+  };
 
   const result = await backendConnection.proxyPost(PORT_PYTHON, '/download/bulk', payload);
   if (!result.ok) {
@@ -105,7 +115,9 @@ app.post('/api/download/bulk', async (req, res) => {
   // Register all generated ids locally in Node
   if (result.data && result.data.downloads) {
     for (const d of result.data.downloads) {
-      downloading.register(d.id, { url: d.url, type, quality, format, fps, started: Date.now() });
+      const metadata = { url: d.url, type: mediaType, quality: actualQuality, format: actualFormat, started: Date.now() };
+      if (mediaType === 'video') metadata.fps = actualFps;
+      downloading.register(d.id, metadata);
     }
   }
 
