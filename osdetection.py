@@ -86,6 +86,85 @@ def get_free_space(path: str) -> dict:
         return {"error": str(e)}
 
 
+def get_max_network_speed() -> dict:
+    """
+    Detect maximum network speed from all network interfaces (Mbps).
+    Returns {"speed_mbps": int, "interface": str, "method": str}
+    """
+    os_name = get_os()
+    max_speed = 0
+    interface = "unknown"
+    method = "fallback"
+
+    if os_name == 'linux':
+        try:
+            import subprocess
+            # Try ethtool first (most reliable)
+            result = subprocess.run(['find', '/sys/class/net', '-name', 'speed'],
+                                   capture_output=True, text=True, timeout=5)
+            speeds = []
+            for line in result.stdout.strip().split('\n'):
+                if line:
+                    try:
+                        with open(line, 'r') as f:
+                            speed = int(f.read().strip())
+                            if speed > 0:
+                                speeds.append(speed)
+                    except:
+                        pass
+            if speeds:
+                max_speed = max(speeds)
+                method = 'ethtool'
+        except:
+            pass
+    
+    elif os_name == 'macos':
+        try:
+            import subprocess
+            result = subprocess.run(['networksetup', '-getinfo', 'Wi-Fi'],
+                                   capture_output=True, text=True, timeout=5)
+            if 'Speed' in result.stdout:
+                # Parse WiFi speed if available
+                for line in result.stdout.split('\n'):
+                    if 'Speed' in line and 'Mbps' in line:
+                        parts = line.split()
+                        try:
+                            speed = int(parts[-2])
+                            max_speed = max(max_speed, speed)
+                            method = 'networksetup'
+                        except:
+                            pass
+        except:
+            pass
+    
+    elif os_name == 'windows':
+        try:
+            import subprocess
+            result = subprocess.run(['Get-NetAdapter', '-Physical', '| Select-Object -ExpandProperty Speed'],
+                                   capture_output=True, text=True, timeout=5, shell=True)
+            if result.returncode == 0:
+                for line in result.stdout.strip().split('\n'):
+                    try:
+                        speed = int(line.strip()) // 1_000_000  # Convert bits to Mbps
+                        max_speed = max(max_speed, speed)
+                        method = 'Get-NetAdapter'
+                    except:
+                        pass
+        except:
+            pass
+    
+    # Fallback to common speeds if detection failed
+    if max_speed <= 0:
+        max_speed = 1000  # Assume 1 Gigabit fallback
+        method = 'fallback'
+    
+    return {
+        "speed_mbps": int(max_speed),
+        "interface": interface,
+        "method": method
+    }
+
+
 def _human(b: int) -> str:
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
         if b < 1024:

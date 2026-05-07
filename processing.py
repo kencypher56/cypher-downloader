@@ -1,6 +1,6 @@
 """
 processing.py - Core download and media processing logic.
-Handles all yt-dlp interactions, progress tracking, retries, and format management.
+Handles all yt-dlp interactions, progress tracking, retries, format management, and resume support.
 """
 
 import os
@@ -8,12 +8,23 @@ import re
 import time
 import threading
 import subprocess
+import json
 import yt_dlp
 from pathlib import Path
+import osdetection
 
 # ─── Per-download cancellation flags ──────────────────────────────────────────
 _cancel_flags = {}  # dl_id -> threading.Event
 _cancel_lock  = threading.Lock()
+
+# ─── Download Resume Info ─────────────────────────────────────────────────────
+_resume_info = {}  # dl_id -> {"filename": "...", "partial_size": 123456}
+_resume_lock = threading.Lock()
+
+# ─── System Network Speed Cache ───────────────────────────────────────────────
+_max_speed_cache = None
+_max_speed_cache_time = 0
+MAX_SPEED_CACHE_DURATION = 300  # Cache for 5 minutes
 
 # ─── Resolution to yt-dlp format string mapping ───────────────────────────────
 RESOLUTION_MAP = {
@@ -53,7 +64,48 @@ def _cleanup_cancel_flag(dl_id: str):
     with _cancel_lock:
         _cancel_flags.pop(dl_id, None)
 
-# ─── Progress hook factory ─────────────────────────────────────────────────────
+def cleanup_cancel_flag(dl_id: str):
+    """Public function to cleanup cancel flag."""
+    _cleanup_cancel_flag(dl_id)
+    # Also cleanup resume info
+    with _resume_lock:
+        _resume_info.pop(dl_id, None)
+
+
+def get_max_system_speed() -> int:
+    """
+    Get max system network speed in Mbps. Returns cached value if recent.
+    """
+    global _max_speed_cache, _max_speed_cache_time
+    
+    now = time.time()
+    if _max_speed_cache is not None and (now - _max_speed_cache_time) < MAX_SPEED_CACHE_DURATION:
+        return _max_speed_cache
+    
+    result = osdetection.get_max_network_speed()
+    _max_speed_cache = result.get('speed_mbps', 1000)
+    _max_speed_cache_time = now
+    
+    return _max_speed_cache
+
+
+def _save_resume_info(dl_id: str, filename: str, partial_size: int):
+    """Save resume information for a partial download."""
+    with _resume_lock:
+        _resume_info[dl_id] = {
+            "filename": filename,
+            "partial_size": partial_size,
+            "saved_at": time.time()
+        }
+
+
+def _get_resume_info(dl_id: str) -> dict:
+    """Retrieve resume information if available."""
+    with _resume_lock:
+        return _resume_info.get(dl_id, {})
+
+
+# ─── Format helpers ────────────────────────────────────────────────────────────
 
 def _make_progress_hook(dl_id: str, progress_registry: dict, lock: threading.Lock, cancel_flag: threading.Event):
     def hook(d):
@@ -249,9 +301,11 @@ def download_video(url: str, fmt: str, quality: str, fps: str,
             'noplaylist':        True,
             'retries':           5,
             'fragment_retries':  5,
+            'skip_unavailable_fragments': True,  # Allow resume on partial downloads
             'socket_timeout':    30,
             'http_chunk_size':   10485760,  # 10MB chunks
             'concurrent_fragment_downloads': 4,
+            'continuedl':        True,  # Resume incomplete file downloads
             'postprocessors':    postprocessors,
             'writeinfojson':     False,
             'writethumbnail':    False,
@@ -332,7 +386,9 @@ def download_audio(url: str, fmt: str, bitrate: str,
             'noplaylist':       True,
             'retries':          5,
             'fragment_retries': 5,
+            'skip_unavailable_fragments': True,  # Allow resume on partial downloads
             'socket_timeout':   30,
+            'continuedl':       True,  # Resume incomplete file downloads
             'postprocessors':   postprocessors,
             'writeinfojson':    False,
             'writethumbnail':   False,
@@ -390,9 +446,11 @@ def download_playlist(url: str, fmt: str, quality: str, fps: str,
         'no_warnings':         True,
         'retries':             5,
         'fragment_retries':    5,
+        'skip_unavailable_fragments': True,  # Allow resume on partial downloads
         'socket_timeout':      30,
         'http_chunk_size':     10485760,
         'concurrent_fragment_downloads': 4,
+        'continuedl':          True,  # Resume incomplete file downloads
         'ignoreerrors':        True,  # skip unavailable videos
         'writeinfojson':       False,
         'writethumbnail':      False,
